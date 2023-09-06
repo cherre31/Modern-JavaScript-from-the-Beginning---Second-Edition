@@ -3,7 +3,15 @@ const itemInput = document.getElementById('item-input');
 const itemList = document.getElementById('item-list');
 const clearButton = document.getElementById('clear');
 const itemFilter = document.getElementById('filter');
+const formBtn = itemForm.querySelector('button');
+let isEditMode = false;
 
+function displayItems(){
+    const itemsFromStorage = getItemsFromStorage();
+    itemsFromStorage.forEach(item => addItemToDOM(item));
+
+    checkUI();
+}
 
 function onAddItemSubmit(e){
     e.preventDefault();
@@ -14,6 +22,21 @@ function onAddItemSubmit(e){
     if(newItem === ''){
         alert('Please add an item');
         return;
+    }
+
+    // Check for edit mode
+    if (isEditMode){
+        const itemToEdit = itemList.querySelector('.edit-mode');
+
+        removeItemFromStorage(itemToEdit.textContent);
+        itemToEdit.classList.remove('edit-mode');
+        itemToEdit.remove();
+        isEditMode = false;
+    } else{
+        if(checkIfItemExists(newItem)){
+            alert('That item already exists!');
+            return;
+        }
     }
 
     // Create item DOM element
@@ -56,7 +79,7 @@ function createIcon(classes){
 
 function addItemToStorage(item){
     const itemsFromStorage = getItemsFromStorage();
-    
+
     // Add new item to array
     itemsFromStorage.push(item);
 
@@ -75,20 +98,60 @@ function getItemsFromStorage(){
     return itemsFromStorage;
 }
 
-function removeItem(e){
+function onClickItem(e) {
     if(e.target.parentElement.classList.contains('remove-item')){
-        if(confirm('Are you sure?')){
-            e.target.parentElement.parentElement.remove();
-
-            checkUI();
-        }
+        removeItem(e.target.parentElement.parentElement);
+    } else {
+        setItemToEdit(e.target);
     }
+}
+
+function checkIfItemExists(item){
+    const itemsFromStorage = getItemsFromStorage();
+
+    return itemsFromStorage.includes(item)
+}
+
+function setItemToEdit(item){
+    isEditMode = true;
+
+    itemList.querySelectorAll('li').forEach(i => i.classList.remove('edit-mode'));
+
+    item.classList.add('edit-mode');
+    formBtn.innerHTML = '<i class="fa-solid fa=pen"></i> Update Item';
+    formBtn.style.backgroundColor = '#228B22';
+    itemInput.value = item.textContent;
+}
+
+function removeItem(item){
+    if (confirm('Are you sure')){
+        // Remove item from DOM
+        item.remove();
+        
+        // Remove item from storage
+        removeItemFromStorage(item.textContent);
+
+        checkUI();
+    }
+}
+
+function removeItemFromStorage(item){
+    let itemsFromStorage = getItemsFromStorage();
+
+    // Filter out item to be removed
+    itemsFromStorage = itemsFromStorage.filter((i) => i !== item);
+
+    // Re-set to localstorage
+    localStorage.setItem('items', JSON.stringify(itemsFromStorage));
 }
 
 function clearItems(){
     while(itemList.firstChild){
         itemList.removeChild(itemList.firstChild);
     }
+
+    // Clear from localStorage
+    localStorage.removeItem('items');
 
     checkUI();
 }
@@ -108,6 +171,8 @@ function filterItems(e){
 }
 
 function checkUI(){
+    itemInput.value = '';
+    
     const items = itemList.querySelectorAll('li');
     if(items.length === 0){
         clearButton.style.display = 'none';
@@ -116,16 +181,28 @@ function checkUI(){
         clearButton.style.display = 'block';
         itemFilter.style.display = 'block';
     }
+
+    formBtn.innerHTML = '<i class="fa-solid fa-plus"></i> Add Item';
+    formBtn.style.backgroundColor = '#333';
+
+    isEditMode = false;
 }
 
-// Event Listeners
-itemForm.addEventListener('submit', onAddItemSubmit);
-itemList.addEventListener('click', removeItem);
-clearButton.addEventListener('click', clearItems);
-itemFilter.addEventListener('input', filterItems);
 
+// Initalize app
 
-checkUI();
+function init() {
+    // Event Listeners
+    itemForm.addEventListener('submit', onAddItemSubmit);
+    itemList.addEventListener('click', onClickItem);
+    clearButton.addEventListener('click', clearItems);
+    itemFilter.addEventListener('input', filterItems);
+    document.addEventListener('DOMContentLoaded', displayItems);
+    
+    checkUI();
+}
+
+init();
 
 // Local Storage Lesson
 // localStorage.setItem('name', 'Brad');
